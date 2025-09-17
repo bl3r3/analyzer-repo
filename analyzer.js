@@ -1,17 +1,22 @@
 import fs from "fs";
 import path from "path";
-import { sync as globSync } from "glob";
+import pkg from "glob";
+const { sync: globSync } = pkg;
 import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
 // --- CONFIGURACIÓN ---
-const PROJECT_DIR = "./src";
+const PROJECT_DIR = "."; // Usamos tu ruta relativa, lo cual es correcto
 const LIBRARIES_TO_TRACK = ["@vetsource/kibble", "@mui/material"];
-
 const stats = {};
 LIBRARIES_TO_TRACK.forEach((lib) => (stats[lib] = {}));
 
+// --- LÓGICA DE ANÁLISIS (AST) ---
+
+/**
+ * Función principal que recorre el directorio y analiza los archivos.
+ */
 function analyzeCode() {
   const filePaths = globSync(`${PROJECT_DIR}/**/*.{js,jsx,ts,tsx}`, {
     ignore: [
@@ -19,7 +24,7 @@ function analyzeCode() {
       "**/*.d.ts",
       "**/*.spec.*",
       "**/*.test.*",
-      "**/analyzer.js",
+      "**/analizer.js", // Se ignora a sí mismo
     ],
   });
 
@@ -36,8 +41,10 @@ function analyzeCode() {
       const localImports = {};
 
       traverse(ast, {
+        // Pasada 1: Encontrar todas las importaciones
         ImportDeclaration(path) {
           const libName = path.node.source.value;
+
           if (LIBRARIES_TO_TRACK.includes(libName)) {
             path.node.specifiers.forEach((specifier) => {
               if (specifier.type === "ImportSpecifier") {
@@ -53,9 +60,8 @@ function analyzeCode() {
                 }
 
                 stats[libName][importedName].imports += 1;
-
+                // --- CORRECCIÓN DE BUG: Registramos el archivo en la importación ---
                 stats[libName][importedName].files.add(filePath);
-
                 localImports[localName] = {
                   lib: libName,
                   original: importedName,
@@ -64,11 +70,15 @@ function analyzeCode() {
             });
           }
         },
+
+        // Pasada 2: Encontrar los usos en JSX
         JSXOpeningElement(path) {
           const nodeName = path.node.name.name;
+
           if (localImports[nodeName]) {
             const { lib, original } = localImports[nodeName];
             stats[lib][original].usage += 1;
+            // La línea de "files.add" se eliminó de aquí
           }
         },
       });
@@ -82,15 +92,22 @@ function analyzeCode() {
   console.log("Análisis completado.");
 }
 
+/**
+ * Función para convertir el objeto de estadísticas en un "sheet" CSV.
+ * (Actualizada con la columna isUsed)
+ */
 function generateSheet(report) {
+  // Añadimos la columna 'isUsed'
   let csvContent = "Library,Component,ImportCount,UsageCount,isUsed,Files\n";
 
   Object.keys(report).forEach((lib) => {
     Object.keys(report[lib]).forEach((component) => {
       const data = report[lib][component];
       const fileList = [...data.files].join("; ");
+      // Añadimos la lógica para "Yes" o "No"
       const isUsed = data.usage > 0 ? "Yes" : "No";
 
+      // Añadimos la nueva columna al string de la fila
       csvContent += `"${lib}","${component}",${data.imports},${data.usage},"${isUsed}","${fileList}"\n`;
     });
   });
@@ -103,7 +120,45 @@ function generateSheet(report) {
   }
 }
 
+/**
+ * NUEVA FUNCIÓN: Convierte el reporte en un JSON limpio para el webhook.
+ */
+function generateJsonPayload(report) {
+  const payload = [];
+
+  Object.keys(report).forEach((lib) => {
+    Object.keys(report[lib]).forEach((componentName) => {
+      const data = report[lib][componentName];
+
+      payload.push({
+        library: lib,
+        component: componentName,
+        import_count: data.imports,
+        usage_count: data.usage,
+        is_used: data.usage > 0 ? "Yes" : "No",
+        files: [...data.files], // Convertimos el Set en un Array para JSON
+      });
+    });
+  });
+
+  // Devolvemos el array completo como un string JSON
+  return JSON.stringify(payload, null, 2);
+}
+
 // --- EJECUCIÓN ---
 analyzeCode();
+
+// Generamos ambos reportes
 generateSheet(stats);
+generateJsonPayload(stats);
+
+// Guardamos el reporte JSON para que el pipeline lo pueda leer
+const jsonPayload = generateJsonPayload(stats);
+try {
+  fs.writeFileSync("report.json", jsonPayload, "utf-8");
+  console.log('Reporte "report.json" generado con éxito.');
+} catch (error) {
+  console.error("Error al guardar el archivo JSON:", error);
+}
+
 console.log(stats);
