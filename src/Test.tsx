@@ -1,4 +1,4 @@
-import { Button, Stack } from "@vetsource/kibble";
+import { Button, Stack, Alert } from "@vetsource/kibble";
 import { styled, ThemeOptions } from "@mui/material";
 
 // Prueba de uso de función (será ignorado, lo cual es correcto)
