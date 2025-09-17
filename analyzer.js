@@ -5,6 +5,7 @@ import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
+// --- CONFIGURACIÓN ---
 const PROJECT_DIR = "./src";
 const LIBRARIES_TO_TRACK = ["@vetsource/kibble", "@mui/material"];
 
@@ -18,7 +19,7 @@ function analyzeCode() {
       "**/*.d.ts",
       "**/*.spec.*",
       "**/*.test.*",
-      "**/analizer.js",
+      "**/analyzer.js",
     ],
   });
 
@@ -42,6 +43,7 @@ function analyzeCode() {
               if (specifier.type === "ImportSpecifier") {
                 const importedName = specifier.imported.name;
                 const localName = specifier.local.name;
+
                 if (!stats[libName][importedName]) {
                   stats[libName][importedName] = {
                     imports: 0,
@@ -49,7 +51,11 @@ function analyzeCode() {
                     files: new Set(),
                   };
                 }
+
                 stats[libName][importedName].imports += 1;
+
+                stats[libName][importedName].files.add(filePath);
+
                 localImports[localName] = {
                   lib: libName,
                   original: importedName,
@@ -63,7 +69,6 @@ function analyzeCode() {
           if (localImports[nodeName]) {
             const { lib, original } = localImports[nodeName];
             stats[lib][original].usage += 1;
-            stats[lib][original].files.add(filePath);
           }
         },
       });
@@ -78,14 +83,12 @@ function analyzeCode() {
 }
 
 function generateSheet(report) {
-  // --- CAMBIO 1: A&ntilde;adimos la nueva columna 'isUsed' al encabezado ---
   let csvContent = "Library,Component,ImportCount,UsageCount,isUsed,Files\n";
 
   Object.keys(report).forEach((lib) => {
     Object.keys(report[lib]).forEach((component) => {
       const data = report[lib][component];
       const fileList = [...data.files].join("; ");
-
       const isUsed = data.usage > 0 ? "Yes" : "No";
 
       csvContent += `"${lib}","${component}",${data.imports},${data.usage},"${isUsed}","${fileList}"\n`;
