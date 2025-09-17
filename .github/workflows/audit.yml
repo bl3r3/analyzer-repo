@@ -1,0 +1,33 @@
+# .github/workflows/audit.yml
+name: Auditoría de Componentes
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  analyze:
+    name: Analizar Uso de Componentes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # npm ci es más rápido y seguro para pipelines que npm install
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run analyzer script
+        run: node analizer.js
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-report
+          path: component_report.csv
