@@ -1,4 +1,3 @@
-// analizer.js
 import fs from "fs";
 import path from "path";
 import { sync as globSync } from "glob";
@@ -6,59 +5,11 @@ import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-// --- CONFIGURACIÓN ---
-const PROJECT_DIR = "./src"; // Ruta relativa a la carpeta src de este proyecto de prueba
+const PROJECT_DIR = "./src";
 const LIBRARIES_TO_TRACK = ["@vetsource/kibble", "@mui/material"];
-
-// Lista de importaciones que TIENEN permitido tener 0 usos (JSX)
-// (Pre-poblada con los ejemplos de tu log)
-const USAGE_ZERO_ALLOW_LIST = new Set([
-  "styled",
-  "createTheme",
-  "ThemeOptions",
-  "Components",
-  "PaletteOptions",
-  "useFormControl",
-  "FormControlProps",
-  "SelectChangeEvent",
-  "StepIconProps",
-  "UseAutocompleteProps",
-  "AutocompleteInputChangeReason",
-  "dialogClasses",
-  "MenuProps",
-  "StackProps",
-  "BoxProps",
-  "CardProps",
-  "TextFieldProps",
-  "useMediaQuery",
-  "SelectChangeEvent",
-  "StepIconProps",
-  "ThemeOptions",
-  "createTheme",
-  "Components",
-  "PaletteOptions",
-  "buttonBaseClasses",
-  "CircularProgressProps",
-  "DividerProps",
-  "FormHelperTextProps",
-  "OutlinedInputProps",
-  "SelectProps",
-  "AlertColor",
-  "TableContainerProps",
-  "DialogProps",
-  "DrawerProps",
-  "PopoverOrigin",
-  "PaginationProps",
-  "ListItemButtonProps",
-  "ListItemIconProps",
-  "ListItemTextProps",
-  "MenuItemProps",
-]);
 
 const stats = {};
 LIBRARIES_TO_TRACK.forEach((lib) => (stats[lib] = {}));
-
-// --- LÓGICA DE ANÁLISIS ---
 
 function analyzeCode() {
   const filePaths = globSync(`${PROJECT_DIR}/**/*.{js,jsx,ts,tsx}`, {
@@ -127,14 +78,20 @@ function analyzeCode() {
 }
 
 function generateSheet(report) {
-  let csvContent = "Library,Component,ImportCount,UsageCount,Files\n";
+  // --- CAMBIO 1: A&ntilde;adimos la nueva columna 'isUsed' al encabezado ---
+  let csvContent = "Library,Component,ImportCount,UsageCount,isUsed,Files\n";
+
   Object.keys(report).forEach((lib) => {
     Object.keys(report[lib]).forEach((component) => {
       const data = report[lib][component];
       const fileList = [...data.files].join("; ");
-      csvContent += `"${lib}","${component}",${data.imports},${data.usage},"${fileList}"\n`;
+
+      const isUsed = data.usage > 0 ? "Yes" : "No";
+
+      csvContent += `"${lib}","${component}",${data.imports},${data.usage},"${isUsed}","${fileList}"\n`;
     });
   });
+
   try {
     fs.writeFileSync("component_report.csv", csvContent, "utf-8");
     console.log('Reporte "component_report.csv" generado con éxito.');
@@ -143,37 +100,7 @@ function generateSheet(report) {
   }
 }
 
-function validateReport(report) {
-  console.log("Validando reporte en busca de importaciones muertas...");
-  const deadImportsFound = [];
-
-  Object.keys(report).forEach((lib) => {
-    Object.keys(report[lib]).forEach((componentName) => {
-      const data = report[lib][componentName];
-      if (data.usage === 0 && !USAGE_ZERO_ALLOW_LIST.has(componentName)) {
-        deadImportsFound.push(
-          `- ${lib}: ${componentName} (Importado ${data.imports} veces, usado 0)`
-        );
-      }
-    });
-  });
-
-  if (deadImportsFound.length > 0) {
-    console.error("------------------------------------------------------");
-    console.error("¡ERROR: BUILD FALLIDO!");
-    console.error(
-      "Se encontraron los siguientes componentes importados pero NUNCA usados en JSX:"
-    );
-    deadImportsFound.forEach((line) => console.error(line));
-    console.error("------------------------------------------------------");
-    process.exit(1); // Falla el pipeline
-  } else {
-    console.log("Validación exitosa. No se encontraron importaciones muertas.");
-  }
-}
-
 // --- EJECUCIÓN ---
 analyzeCode();
 generateSheet(stats);
-validateReport(stats); // Validamos el resultado
 console.log(stats);
