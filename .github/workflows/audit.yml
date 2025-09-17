@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Run analyzer script
-        run: node analizer.js
+        run: node analyzer.js
 
       - name: Upload report artifact
         uses: actions/upload-artifact@v4
