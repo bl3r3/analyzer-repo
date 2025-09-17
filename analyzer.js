@@ -5,17 +5,11 @@ import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
 
-// --- CONFIGURACIÓN ---
-const PROJECT_DIR = "."; // Usamos tu ruta relativa, lo cual es correcto
+const PROJECT_DIR = ".";
 const LIBRARIES_TO_TRACK = ["@vetsource/kibble", "@mui/material"];
 const stats = {};
 LIBRARIES_TO_TRACK.forEach((lib) => (stats[lib] = {}));
 
-// --- LÓGICA DE ANÁLISIS (AST) ---
-
-/**
- * Función principal que recorre el directorio y analiza los archivos.
- */
 function analyzeCode() {
   const filePaths = globSync(`${PROJECT_DIR}/**/*.{js,jsx,ts,tsx}`, {
     ignore: [
@@ -70,14 +64,12 @@ function analyzeCode() {
           }
         },
 
-        // Pasada 2: Encontrar los usos en JSX
         JSXOpeningElement(path) {
           const nodeName = path.node.name.name;
 
           if (localImports[nodeName]) {
             const { lib, original } = localImports[nodeName];
             stats[lib][original].usage += 1;
-            // La línea de "files.add" se eliminó de aquí
           }
         },
       });
@@ -91,10 +83,6 @@ function analyzeCode() {
   console.log("Análisis completado.");
 }
 
-/**
- * Función para convertir el objeto de estadísticas en un "sheet" CSV.
- * (Actualizada con la columna isUsed)
- */
 function generateSheet(report) {
   // Añadimos la columna 'isUsed'
   let csvContent = "Library,Component,ImportCount,UsageCount,isUsed,Files\n";
