@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
-import pkg from "glob";
-const { sync: globSync } = pkg;
+import { sync as globSync } from "glob";
 import { parse } from "@babel/parser";
 import _traverse from "@babel/traverse";
 const traverse = _traverse.default;
