@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           # IMPORTANTE: Cambia esto por el nombre de tu repo de la herramienta
-          repository: TU_USUARIO_DE_GITHUB/component-analyzer-tool
+          repository: bl3r3/component-analyzer-tool
           path: ./.github/analyzer-tool
 
       # Paso C: Instala las dependencias DE LA HERRAMIENTA
