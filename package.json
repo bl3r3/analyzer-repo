@@ -9,6 +9,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "@adyen/adyen-platform-experience-web": "^1.5.0",
+    "@types/recharts": "^1.8.23",
+    "@vetsource/dates": "^1.4.0",
+    "@vetsource/icons": "^2.10.0",
+    "@vetsource/kibble": "^2.18.2",
+    "@vetsource/tokens": "^3.1.0"
+  },
   "devDependencies": {
     "@babel/parser": "^7.28.4",
     "@babel/traverse": "^7.28.4",
