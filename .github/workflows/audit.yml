@@ -2,6 +2,8 @@ name: Auditoría de Componentes
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -10,29 +12,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # Paso A: Descarga el c&oacute;digo de tu proyecto principal
+      - name: Checkout Main Project Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # Paso B: Descarga la herramienta de an&aacute;lisis desde su propio repo
+      # La descarga en una carpeta espec&iacute;fica para no mezclar archivos.
+      - name: Checkout Analyzer Tool
+        uses: actions/checkout@v4
         with:
-          node-version: 22
+          # IMPORTANTE: Cambia esto por el nombre de tu repo de la herramienta
+          repository: TU_USUARIO_DE_GITHUB/component-analyzer-tool
+          path: ./.github/analyzer-tool
 
-      - name: Install dependencies
-        run: npm ci
+      # Paso C: Instala las dependencias DE LA HERRAMIENTA
+      - name: Install Analyzer Dependencies
+        run: npm install
+        working-directory: ./.github/analyzer-tool # Le decimos que corra npm install DENTRO de la carpeta de la herramienta
 
-      - name: Run analyzer script
-        run: node analyzer.js
+      # Paso D: Ejecuta el an&aacute;lisis y le pasa la ruta
+      - name: Run Analyzer Script
+        # 1. Ejecuta el script desde la carpeta de la herramienta
+        # 2. Le pasa '.' como argumento (process.argv[2]), que significa "analiza el directorio actual"
+        #    (el directorio actual es la ra&iacute;z de tu proyecto principal)
+        run: node ./.github/analyzer-tool/analyzer.js .
 
+      # Paso E: Env&iacute;a a n8n (esto no cambia)
+      # El script habr&aacute; creado report.json en la ra&iacute;z del proyecto principal.
       - name: Send Report to n8n
         run: |
           curl -X POST \
           -H "Content-Type: application/json" \
           -d @report.json \
           ${{ secrets.N8N_WEBHOOK_URL }}
-
-      - name: Upload report artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: component-report
-          path: component_report.csv

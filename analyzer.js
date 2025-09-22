@@ -17,7 +17,7 @@ function analyzeCode() {
       "**/*.d.ts",
       "**/*.spec.*",
       "**/*.test.*",
-      "**/analizer.js", // Se ignora a sí mismo
+      "**/analyzer.js", // Se ignora a sí mismo
     ],
   });
 
